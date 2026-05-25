@@ -9,13 +9,13 @@ import networkx as nx
 class GraphClass:
     """
     Flujo general:
-    1. Pregunta cuántos nodos tendrá el grafo.
+    1. Pregunta si el grafo se capturará manualmente o desde una matriz.
     2. Pregunta si los nodos se nombran como letras o números.
-    3. Pide las conexiones de cada nodo.
+    3. Captura conexiones manuales o matriz binaria.
     4. Genera la lista de aristas sin repetirlas.
     5. Pregunta si el grafo tiene pesos.
     6. Calcula coloración y, si hay pesos, Kruskal.
-    7. Muestra un menú para graficar el grafo normal, coloreado o Kruskal.
+    7. Muestra un menú para graficar el grafo normal, coloreado, Kruskal o relaciones de matriz.
     """
 
     # Paleta base para la coloración del grafo.
@@ -44,27 +44,59 @@ class GraphClass:
         print("\n [*] Programa finalizado con Ctrl+C. Gracias por usar el sistema de grafos.")
         sys.exit(0)
 
-    def getNodesNames(self, nodesNumber):
+    def getGraphInputSource(self):
         """
-        Genera los nombres de los nodos según el formato elegido por el usuario.
+        Pregunta de dónde saldrá la estructura del grafo.
 
-        Alfabético: A, B, C...
-        Numérico: 1, 2, 3...
+        Manual:
+        - El usuario escribe las conexiones de cada nodo.
 
-        Todos los nombres se manejan como strings para que el resto del programa
-        pueda comparar nodos sin mezclar tipos int y str.
+        Matriz:
+        - El usuario captura una matriz binaria cuadrada.
         """
         while (True):
-            print(" [*] Selecciona el tipo de nombramiento de nodos:\n 1) Alfabético: A, B, C...\n 2) Numérico: 1, 2, 3...")
+            print(" [*] Selecciona el origen del grafo:\n 1) Manual\n 2) Matriz binaria")
             answer = input(" --> ").strip()
 
             match answer:
                 case "1":
-                    return list(string.ascii_uppercase[:nodesNumber])
+                    return "manual"
                 case "2":
-                    return [str(number) for number in range(1, nodesNumber + 1)]
+                    return "matrix"
                 case _:
                     print(" [!] Valor incorrecto ingresado, intentalo nuevamente")
+
+    def getNodeNamingMode(self):
+        """
+        Pregunta cómo se nombrarán los nodos.
+
+        Esta función se usa tanto para grafos manuales como para grafos creados
+        desde matriz. Así una matriz puede representarse con A, B, C... o con
+        1, 2, 3...
+        """
+        while (True):
+            print(" [*] Selecciona el nombramiento de los nodos:\n 1) Alfabético: A, B, C...\n 2) Numérico: 1, 2, 3...")
+            answer = input(" --> ").strip()
+
+            match answer:
+                case "1":
+                    return "alphabetic"
+                case "2":
+                    return "numeric"
+                case _:
+                    print(" [!] Valor incorrecto ingresado, intentalo nuevamente")
+
+    def getNodesNames(self, nodesNumber, inputMode):
+        """
+        Genera los nombres de los nodos según el modo de nombramiento elegido.
+
+        Alfabético: A, B, C...
+        Numérico: 1, 2, 3...
+        """
+        if (inputMode == "alphabetic"):
+            return list(string.ascii_uppercase[:nodesNumber])
+
+        return [str(number) for number in range(1, nodesNumber + 1)]
 
     def getNextColor(self, colorIndex):
         """
@@ -114,6 +146,155 @@ class GraphClass:
 
             return number
 
+    def askBinaryValue(self, message):
+        """
+        Pide un valor binario para la matriz.
+
+        Solo acepta 0 o 1. Si el usuario presiona Enter, escribe texto o ingresa
+        otro número, repite la pregunta.
+        """
+        while (True):
+            answer = input(message).strip()
+
+            if (answer == ""):
+                print(" [!] No ingresaste ningún valor, intentalo nuevamente")
+                continue
+
+            try:
+                value = int(answer)
+            except ValueError:
+                print(" [!] Debes ingresar 0 o 1")
+                continue
+
+            if (value not in [0, 1]):
+                print(" [!] La matriz debe ser binaria, solo se permite 0 o 1")
+                continue
+
+            return value
+
+    def getMatrix(self):
+        """
+        Captura una matriz binaria cuadrada.
+
+        Matrix[i][j] = 1 significa que existe relación del nodo i hacia el nodo j.
+        """
+        matrixSize = self.askPositiveInteger(" [*] Ingresa el tamaño de la matriz cuadrada: \n --> ")
+        matrix = []
+
+        for row in range(matrixSize):
+            matrix.append([])
+
+            for col in range(matrixSize):
+                value = self.askBinaryValue(f" [*] Ingresa el valor de fila {row + 1}, columna {col + 1}:\n --> ")
+                matrix[row].append(value)
+
+        return matrix
+
+    def getNodesEdgesArrayFromMatrix(self):
+        """
+        Convierte self.Matrix en NodesEdgesArray para poder reutilizar el flujo del grafo.
+
+        Nota: los valores de la diagonal se usan para analizar reflexividad.
+        Los bucles se guardan aparte en MatrixEdges para dibujar el grafo original,
+        pero no se agregan aquí para no afectar coloración ni Kruskal.
+        """
+        nodesEdgesArray = []
+
+        for rowIndex, nodeName in enumerate(self.NodesNames):
+            nodeEdges = []
+
+            for colIndex, value in enumerate(self.Matrix[rowIndex]):
+                destinationNode = self.NodesNames[colIndex]
+
+                if (value == 1 and destinationNode != nodeName):
+                    nodeEdges.append(destinationNode)
+
+            nodesEdgesArray.append({
+                "Node": nodeName,
+                "List": nodeEdges,
+                "EdgesCount": len(nodeEdges),
+            })
+
+        return nodesEdgesArray
+
+    def getMatrixEdgesWithLoops(self):
+        """
+        Genera las aristas completas de la matriz incluyendo bucles.
+
+        Se usa solo para dibujar el grafo original cuando la entrada fue una matriz.
+        Así se pueden representar relaciones como A->A sin afectar coloración,
+        Kruskal u otras funciones que trabajan mejor sin bucles.
+        """
+        matrixEdges = []
+
+        for rowIndex, row in enumerate(self.Matrix):
+            originNode = self.NodesNames[rowIndex]
+
+            for colIndex, value in enumerate(row):
+                if (value == 1):
+                    destinationNode = self.NodesNames[colIndex]
+                    matrixEdges.append([originNode, destinationNode])
+
+        return matrixEdges
+
+    def isMatrixReflexive(self):
+        """
+        Una relación es reflexiva si toda la diagonal principal contiene 1.
+        """
+        for index in range(len(self.Matrix)):
+            if (self.Matrix[index][index] != 1):
+                return False
+
+        return True
+
+    def getMatrixSymmetryRelations(self):
+        """
+        Retorna [isSymmetric, isAsymmetric].
+
+        Simétrica: Matrix[i][j] == Matrix[j][i].
+        Asimétrica: no existen i,j con Matrix[i][j] = 1 y Matrix[j][i] = 1.
+        """
+        isSymmetric = True
+        isAsymmetric = True
+        matrixSize = len(self.Matrix)
+
+        for row in range(matrixSize):
+            for col in range(matrixSize):
+                if (self.Matrix[row][col] != self.Matrix[col][row]):
+                    isSymmetric = False
+
+                if (self.Matrix[row][col] == 1 and self.Matrix[col][row] == 1):
+                    isAsymmetric = False
+
+        return [isSymmetric, isAsymmetric]
+
+    def isMatrixTransitive(self):
+        """
+        Una relación es transitiva si i->j y j->k implica i->k.
+        """
+        matrixSize = len(self.Matrix)
+
+        for i in range(matrixSize):
+            for j in range(matrixSize):
+                for k in range(matrixSize):
+                    if (self.Matrix[i][j] == 1 and self.Matrix[j][k] == 1 and self.Matrix[i][k] != 1):
+                        return False
+
+        return True
+
+    def getMatrixRelations(self):
+        """
+        Calcula las propiedades principales de la matriz de relación.
+        """
+        symmetryRelations = self.getMatrixSymmetryRelations()
+
+        return {
+            "Reflexiva": self.isMatrixReflexive(),
+            "Simétrica": symmetryRelations[0],
+            "Asimétrica": symmetryRelations[1],
+            "Transitiva": self.isMatrixTransitive(),
+        }
+
     def getNodeOrder(self, nodeName):
         """
         Retorna la posición original del nodo dentro de self.NodesNames.
@@ -152,11 +333,27 @@ class GraphClass:
         """
         signal.signal(signal.SIGINT, self.handleExitSignal)
 
-        nodesNumber = self.askPositiveInteger(" [*] Ingresa la cantidad de nodos a operar: \n --> ")
+        self.Matrix = []
+        self.MatrixRelations = {}
+        self.hasMatrix = False
+        self.isDirected = False
+        self.inputSource = self.getGraphInputSource()
+        self.inputMode = self.getNodeNamingMode()
 
-        self.NodesNames = self.getNodesNames(nodesNumber)
-        self.NodesEdgesArray = self.getNodesEdgesArray()
+        if (self.inputSource == "matrix"):
+            self.hasMatrix = True
+            self.isDirected = True
+            self.Matrix = self.getMatrix()
+            self.NodesNames = self.getNodesNames(len(self.Matrix), self.inputMode)
+            self.NodesEdgesArray = self.getNodesEdgesArrayFromMatrix()
+            self.MatrixRelations = self.getMatrixRelations()
+        else:
+            nodesNumber = self.askPositiveInteger(" [*] Ingresa la cantidad de nodos a operar: \n --> ")
+            self.NodesNames = self.getNodesNames(nodesNumber, self.inputMode)
+            self.NodesEdgesArray = self.getNodesEdgesArray()
+
         self.Edges = self.getEdges()
+        self.MatrixEdges = self.getMatrixEdgesWithLoops() if self.hasMatrix else []
 
         # haveWeights indica si ya se capturaron pesos para las aristas.
         # Se usa para saber si se deben dibujar etiquetas de pesos y si se puede ejecutar Kruskal.
@@ -202,9 +399,10 @@ class GraphClass:
         2. Grafo coloreado + tabla de colores.
         3. Garfo Kruskal + tabla de pesos usados.
         4. Todas las visualizaciones anteriores.
+        5. Relaciones de matriz (si aplica).
         """
         while (True):
-            print(" [*] Selecciona la opcion a representar:\n 1) Grafo Normal\n 2) Grafo de color\n 3) Grafo Kruscal\n 4) Todos")
+            print(" [*] Selecciona la opcion a representar:\n 1) Grafo Normal\n 2) Grafo de color\n 3) Grafo Kruscal\n 4) Todos\n 5) Relaciones de matriz")
             answer = input(" --> ").strip()
 
             if (answer == ""):
@@ -234,12 +432,63 @@ class GraphClass:
                     self.drawColorTable()
                     self.drawGraph("Grafo de Kruscal", edges=self.KruscalEdgesArray)
                     self.drawKruscalTable()
+                    if (self.hasMatrix):
+                        self.drawMatrixRelationsTable()
+                case 5:
+                    if (self.hasMatrix):
+                        self.drawMatrixRelationsTable()
+                    else:
+                        print(" [!] Esta opción solo está disponible si el grafo fue creado desde una matriz")
                 case _:
                     print(" [!] Valor incorrecto ingresado, intentalo nuevamente")
                     return
 
             # Se llama al final para mantener abiertas todas las ventanas generadas.
             plt.show()
+    def drawMatrixRelationsTable(self):
+        """
+        Dibuja una tabla con las propiedades de la matriz de relación.
+
+        Solo se usa cuando el grafo fue creado desde una matriz binaria.
+        """
+        fig, ax = plt.subplots(num="Relaciones de Matriz")
+        ax.axis("off")
+
+        tableData = []
+
+        for relationName, relationValue in self.MatrixRelations.items():
+            tableData.append([
+                relationName,
+                "Sí" if relationValue else "No",
+            ])
+
+        if (not any(self.MatrixRelations.values())):
+            tableData.append([
+                "Sin relaciones detectadas",
+                "-",
+            ])
+
+        table = ax.table(
+            cellText=tableData,
+            colLabels=["Relación", "Resultado"],
+            cellLoc="center",
+            loc="center",
+        )
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(12)
+        table.scale(1, 1.5)
+
+        for rowIndex in range(1, len(tableData) + 1):
+            resultText = table[(rowIndex, 1)].get_text().get_text()
+
+            if (resultText == "Sí"):
+                table[(rowIndex, 1)].get_text().set_color("green")
+                table[(rowIndex, 1)].get_text().set_fontweight("bold")
+            elif (resultText == "No"):
+                table[(rowIndex, 1)].get_text().set_color("red")
+
+        plt.show(block=False)
 
     def ensureKruscalData(self):
         """
@@ -274,7 +523,10 @@ class GraphClass:
 
             for nodeEdge in tempNodeEdges:
                 # Se normaliza la entrada para evitar errores por espacios o minúsculas.
-                nodeEdge = nodeEdge.strip().upper()
+                nodeEdge = nodeEdge.strip()
+
+                if (self.inputMode == "alphabetic"):
+                    nodeEdge = nodeEdge.upper()
 
                 # Solo se aceptan nodos válidos y se evita conectar un nodo consigo mismo.
                 if (nodeEdge in self.NodesNames and nodeEdge != nodeName):
@@ -290,10 +542,15 @@ class GraphClass:
 
     def getEdges(self):
         """
-        Convierte NodesEdgesArray en una lista de aristas sin duplicados.
+        Convierte NodesEdgesArray en una lista de aristas.
 
-        Como el grafo es no dirigido, A-B y B-A representan la misma arista.
-        Por eso antes de agregar una arista se revisa si su versión inversa ya existe.
+        Manual:
+        - Se trata como grafo no dirigido.
+        - A-B y B-A cuentan como una sola arista.
+
+        Matriz:
+        - Se trata como grafo dirigido.
+        - A->B y B->A cuentan como aristas diferentes.
         """
         edges = []
 
@@ -304,7 +561,9 @@ class GraphClass:
                 edge = [originNode, destinationNode]
                 reversedEdge = [destinationNode, originNode]
 
-                if (reversedEdge not in edges):
+                if (self.isDirected):
+                    edges.append(edge)
+                elif (reversedEdge not in edges):
                     edges.append(edge)
 
         return edges
@@ -443,26 +702,47 @@ class GraphClass:
         """
         Crea las etiquetas de los nodos para el dibujo.
 
-        Cada nodo se dibuja con su nombre y con su número de conexiones.
-        Ejemplo:
-        A
-        Edges: 3
+        En grafos manuales muestra Edges.
+        En grafos de matriz dirigida muestra Out, porque cuenta salidas del nodo.
         """
         nodeLabels = {}
 
         for nodeData in self.NodesEdgesArray:
             nodeName = nodeData["Node"]
-            nodeLabels[nodeName] = f"{nodeName}\nEdges: {nodeData['EdgesCount']}"
+
+            if (self.isDirected):
+                labelName = "Out:"
+            else:
+                labelName = "Edges:"
+
+            nodeLabels[nodeName] = f"{nodeName}\n{labelName} {nodeData['EdgesCount']}"
 
         return nodeLabels
+
+    def shouldShowEdgeLabel(self, edge, edges=None):
+        """
+        Decide si una etiqueta de peso debe mostrarse para una arista.
+
+        Si edges es None, significa que se está dibujando el grafo completo.
+        Si el grafo es dirigido, solo coincide la dirección exacta A->B.
+        Si el grafo no es dirigido, A-B y B-A son equivalentes.
+        """
+        if (edges is None):
+            return True
+
+        reversedEdge = [edge[1], edge[0]]
+
+        if (self.isDirected):
+            return edge in edges
+
+        return edge in edges or reversedEdge in edges
 
     def getEdgeLabels(self, edges=None):
         """
         Crea las etiquetas de pesos para las aristas.
 
-        Si edges es None, se retornan todos los pesos del grafo original.
-        Si edges trae una lista de aristas, solo se retornan los pesos de esas aristas.
-        Esto permite que Kruskal muestre únicamente los pesos usados en su árbol.
+        En grafos dirigidos solo coincide la arista exacta A->B.
+        En grafos no dirigidos también acepta B-A como equivalente.
         """
         edgeLabels = {}
 
@@ -471,9 +751,9 @@ class GraphClass:
 
         for edgeData in self.EdgesWeights:
             edgeTuple = tuple(edgeData["Edge"])
-            reversedEdge = [edgeTuple[1], edgeTuple[0]]
+            edge = list(edgeTuple)
 
-            if (edges is None or list(edgeTuple) in edges or reversedEdge in edges):
+            if (self.shouldShowEdgeLabel(edge, edges)):
                 edgeLabels[edgeTuple] = edgeData["Weight"]
 
         return edgeLabels
@@ -493,9 +773,20 @@ class GraphClass:
         - grafo de Kruskal
         """
         plt.figure(title, figsize=(14, 10))
-        graph = nx.Graph()
 
-        if (edges is None):
+        # Solo el grafo original se dibuja como dirigido cuando viene de matriz.
+        # Coloración y Kruskal se mantienen como grafos no dirigidos para no mezclar
+        # la representación de relaciones con algoritmos que normalmente se trabajan sin dirección.
+        drawAsDirected = self.isDirected and edges is None and title == "Original"
+
+        if (drawAsDirected):
+            graph = nx.DiGraph()
+        else:
+            graph = nx.Graph()
+
+        if (edges is None and drawAsDirected):
+            graph.add_edges_from(self.MatrixEdges)
+        elif (edges is None):
             graph.add_edges_from(self.Edges)
         else:
             graph.add_edges_from(edges)
@@ -518,14 +809,27 @@ class GraphClass:
             scale=4.0,
         )
 
-        nx.draw(
-            graph,
-            pos,
-            with_labels=False,
-            node_size=2200,
-            node_color=nodeColors,
-            width=2.5,
-        )
+        if (drawAsDirected):
+            nx.draw(
+                graph,
+                pos,
+                with_labels=False,
+                node_size=2200,
+                node_color=nodeColors,
+                width=2.5,
+                arrows=True,
+                arrowsize=22,
+                connectionstyle="arc3,rad=0.08",
+            )
+        else:
+            nx.draw(
+                graph,
+                pos,
+                with_labels=False,
+                node_size=2200,
+                node_color=nodeColors,
+                width=2.5,
+            )
 
         nx.draw_networkx_labels(
             graph,
