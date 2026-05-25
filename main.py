@@ -397,7 +397,7 @@ class GraphClass:
         Permite dibujar:
         1. Grafo original.
         2. Grafo coloreado + tabla de colores.
-        3. Garfo Kruskal + tabla de pesos usados.
+        3. Grafo Kruskal + tabla de pesos usados.
         4. Todas las visualizaciones anteriores.
         5. Relaciones de matriz (si aplica).
         """
@@ -417,34 +417,62 @@ class GraphClass:
 
             match answer:
                 case 1:
-                    self.drawGraph()
+                    self.showOriginalGraph()
                 case 2:
-                    self.drawGraph("Grafo de Color", nodeColors=self.NodesColored)
-                    self.drawColorTable()
+                    self.showColorGraph()
                 case 3:
-                    self.ensureKruscalData()
-                    self.drawGraph("Grafo de Kruscal", edges=self.KruscalEdgesArray)
-                    self.drawKruscalTable()
+                    self.showKruscalGraph()
                 case 4:
-                    self.ensureKruscalData()
-                    self.drawGraph()
-                    self.drawGraph("Grafo de Color", nodeColors=self.NodesColored)
-                    self.drawColorTable()
-                    self.drawGraph("Grafo de Kruscal", edges=self.KruscalEdgesArray)
-                    self.drawKruscalTable()
-                    if (self.hasMatrix):
-                        self.drawMatrixRelationsTable()
+                    self.showAllGraphs()
                 case 5:
-                    if (self.hasMatrix):
-                        self.drawMatrixRelationsTable()
-                    else:
-                        print(" [!] Esta opción solo está disponible si el grafo fue creado desde una matriz")
+                    self.showMatrixRelations()
                 case _:
                     print(" [!] Valor incorrecto ingresado, intentalo nuevamente")
                     return
 
             # Se llama al final para mantener abiertas todas las ventanas generadas.
             plt.show()
+
+    def showOriginalGraph(self):
+        """
+        Muestra únicamente el grafo original.
+        """
+        self.drawGraph()
+
+    def showColorGraph(self):
+        """
+        Muestra el grafo coloreado y su tabla de colores.
+        """
+        self.drawGraph("Grafo de Color", nodeColors=self.NodesColored)
+        self.drawColorTable()
+
+    def showKruscalGraph(self):
+        """
+        Muestra el grafo de Kruskal y su tabla.
+        """
+        self.ensureKruscalData()
+        self.drawGraph("Grafo de Kruscal", edges=self.KruscalEdgesArray)
+        self.drawKruscalTable()
+
+    def showMatrixRelations(self):
+        """
+        Muestra la tabla de relaciones de matriz si el grafo fue capturado por matriz.
+        """
+        if (self.hasMatrix):
+            self.drawMatrixRelationsTable()
+        else:
+            print(" [!] Esta opción solo está disponible si el grafo fue creado desde una matriz")
+
+    def showAllGraphs(self):
+        """
+        Muestra todas las visualizaciones disponibles.
+        """
+        self.showOriginalGraph()
+        self.showColorGraph()
+        self.showKruscalGraph()
+
+        if (self.hasMatrix):
+            self.drawMatrixRelationsTable()
     def drawMatrixRelationsTable(self):
         """
         Dibuja una tabla con las propiedades de la matriz de relación.
@@ -698,26 +726,38 @@ class GraphClass:
 
         return excludedNodesList
 
-    def getNodeLabels(self):
+    def getNodeLabels(self, drawAsDirected=False):
         """
         Crea las etiquetas de los nodos para el dibujo.
 
-        En grafos manuales muestra Edges.
-        En grafos de matriz dirigida muestra Out, porque cuenta salidas del nodo.
+        En el grafo original dirigido muestra Out.
+        En los demás grafos muestra Edges para mantener consistencia con coloración y Kruskal.
         """
         nodeLabels = {}
+        labelName = "Out:" if drawAsDirected else "Edges:"
 
         for nodeData in self.NodesEdgesArray:
             nodeName = nodeData["Node"]
-
-            if (self.isDirected):
-                labelName = "Out:"
-            else:
-                labelName = "Edges:"
-
             nodeLabels[nodeName] = f"{nodeName}\n{labelName} {nodeData['EdgesCount']}"
 
         return nodeLabels
+
+    def getEdgesToDraw(self, edges, drawAsDirected):
+        """
+        Decide qué lista de aristas se debe dibujar.
+
+        - Si se dibuja el grafo original dirigido desde matriz, usa MatrixEdges
+          para incluir bucles como A->A.
+        - Si se dibuja el grafo original normal, usa Edges.
+        - Si se pasa una lista específica, la respeta.
+        """
+        if (edges is not None):
+            return edges
+
+        if (drawAsDirected):
+            return self.MatrixEdges
+
+        return self.Edges
 
     def shouldShowEdgeLabel(self, edge, edges=None):
         """
@@ -784,14 +824,9 @@ class GraphClass:
         else:
             graph = nx.Graph()
 
-        if (edges is None and drawAsDirected):
-            graph.add_edges_from(self.MatrixEdges)
-        elif (edges is None):
-            graph.add_edges_from(self.Edges)
-        else:
-            graph.add_edges_from(edges)
+        graph.add_edges_from(self.getEdgesToDraw(edges, drawAsDirected))
 
-        nodeLabels = self.getNodeLabels()
+        nodeLabels = self.getNodeLabels(drawAsDirected)
         edgeLabels = self.getEdgeLabels(edges)
 
         # Para el grafo coloreado se pasa un diccionario de colores por nodo.
@@ -889,7 +924,7 @@ class GraphClass:
 
         table = ax.table(
             cellText=tableData,
-            colLabels=["Nodo", "Vertices", "Color"],
+            colLabels=["Nodo", "Edges", "Color"],
             cellLoc="center",
             loc="center",
             cellColours=cellColors,
