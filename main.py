@@ -282,6 +282,20 @@ class GraphClass:
 
         return matrixEdges
 
+    def countLogicalEdgesByNode(self, nodeName):
+        return sum(
+            1
+            for firstNode, secondNode in self.Edges
+            if nodeName == firstNode or nodeName == secondNode
+        )
+
+    def countDirectedEdgesByNode(self, nodeName):
+        return sum(
+            1
+            for firstNode, secondNode in self.MatrixEdges
+            if nodeName == firstNode
+        )
+
     def isMatrixReflexive(self):
         """
         Una relación es reflexiva si toda la diagonal principal contiene 1.
@@ -473,6 +487,7 @@ class GraphClass:
 
         if (self.hasMatrix):
             self.drawMatrixRelationsTable()
+    
     def drawMatrixRelationsTable(self):
         """
         Dibuja una tabla con las propiedades de la matriz de relación.
@@ -584,16 +599,11 @@ class GraphClass:
 
         for nodeData in self.NodesEdgesArray:
             originNode = nodeData["Node"]
-
             for destinationNode in nodeData["List"]:
                 edge = [originNode, destinationNode]
                 reversedEdge = [destinationNode, originNode]
-
-                if (self.isDirected):
+                if (edge not in edges and reversedEdge not in edges):
                     edges.append(edge)
-                elif (reversedEdge not in edges):
-                    edges.append(edge)
-
         return edges
 
     def getColorGraph(self):
@@ -734,11 +744,15 @@ class GraphClass:
         En los demás grafos muestra Edges para mantener consistencia con coloración y Kruskal.
         """
         nodeLabels = {}
-        labelName = "Out:" if drawAsDirected else "Edges:"
 
-        for nodeData in self.NodesEdgesArray:
-            nodeName = nodeData["Node"]
-            nodeLabels[nodeName] = f"{nodeName}\n{labelName} {nodeData['EdgesCount']}"
+        for nodeName in self.NodesNames:
+            if (drawAsDirected):
+                labelName = "Out:"
+                edgesCount = self.countDirectedEdgesByNode(nodeName)
+            else:
+                labelName = "Edges:"
+                edgesCount = self.countLogicalEdgesByNode(nodeName)
+            nodeLabels[nodeName] = f"{nodeName}\n{labelName} {edgesCount}"
 
         return nodeLabels
 
@@ -912,7 +926,7 @@ class GraphClass:
 
             tableData.append([
                 nodeName,
-                nodeData["EdgesCount"],
+                self.countLogicalEdgesByNode(nodeName),
                 nodeColor,
             ])
 
