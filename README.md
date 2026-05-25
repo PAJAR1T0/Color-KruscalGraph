@@ -7,9 +7,10 @@ El proyecto permite:
 - Representar grafos visualmente.
 - Colorear grafos usando una heurística greedy.
 - Calcular árboles de expansión mínima usando Kruskal.
+- Analizar relaciones mediante matrices binarias.
 - Mostrar tablas auxiliares para análisis.
 - Trabajar con nodos alfabéticos o numéricos.
-- Visualizar pesos y conexiones de cada nodo.
+- Visualizar pesos, conexiones y relaciones dirigidas.
 
 ---
 
@@ -25,6 +26,8 @@ Incluye:
 - Aristas.
 - Número de conexiones por nodo.
 - Pesos (si existen).
+- Relaciones dirigidas cuando el grafo proviene de matriz.
+- Bucles como A → A en matrices reflexivas.
 
 ---
 
@@ -41,8 +44,8 @@ Características:
 
 También genera una tabla con:
 
-| Nodo | Vertices | Color |
-|------|----------|-------|
+| Nodo | Edges | Color |
+|------|-------|-------|
 
 ---
 
@@ -61,6 +64,33 @@ Tabla generada:
 
 | Nodo -> Nodo | Peso |
 |--------------|------|
+
+---
+
+## Matrices de Relación
+
+El sistema también permite trabajar con matrices binarias de relación.
+
+Características:
+
+- Captura de matrices cuadradas desde teclado.
+- Representación dirigida usando `DiGraph`.
+- Detección automática de:
+  - Reflexividad.
+  - Simetría.
+  - Asimetría.
+  - Transitividad.
+- Visualización gráfica de relaciones dirigidas.
+- Soporte para bucles como `A -> A`.
+
+Tabla generada:
+
+| Relación | Resultado |
+|-----------|------------|
+| Reflexiva | Sí/No |
+| Simétrica | Sí/No |
+| Asimétrica | Sí/No |
+| Transitiva | Sí/No |
 
 ---
 
@@ -106,7 +136,7 @@ pip install matplotlib networkx
 ## Usando uv
 
 ```bash
-uv run python main.py
+uv run main.py
 ```
 
 ## Usando venv tradicional activado
@@ -119,16 +149,19 @@ python3 main.py
 
 # Flujo del programa
 
-1. Ingresar cantidad de nodos.
+1. Seleccionar origen del grafo:
+   - Manual.
+   - Matriz binaria.
 2. Elegir nombramiento:
    - Alfabético.
    - Numérico.
-3. Ingresar conexiones.
+3. Capturar conexiones o matriz.
 4. Definir si existen pesos.
 5. Seleccionar visualización:
    - Grafo normal.
    - Grafo de color.
    - Kruskal.
+   - Relaciones de matriz.
    - Todas.
 
 ---
@@ -153,6 +186,24 @@ A-D = 7
 B-C = 1
 C-D = 3
 ```
+
+---
+
+## Matriz binaria
+
+```text
+1 1 0 1
+0 1 1 0
+0 0 1 1
+0 0 0 1
+```
+
+Relaciones esperadas:
+
+- Reflexiva: Sí
+- Simétrica: No
+- Asimétrica: No
+- Transitiva: Sí
 
 ---
 
@@ -219,3 +270,7 @@ Estrategia:
 - Tablas auxiliares con Matplotlib.
 - Generación dinámica de colores.
 - Código documentado para mantenimiento.
+- Soporte para grafos dirigidos desde matriz.
+- Separación entre aristas lógicas y aristas visuales con bucles.
+- Soporte para relaciones reflexivas.
+- Prevención de ciclos en Kruskal usando Union-Find.

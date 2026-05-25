@@ -33,6 +33,51 @@ class GraphClass:
         "#AF7AC5",  # violeta
     ]
 
+    def __init__(self):
+        """
+        Constructor de la clase.
+
+        Aquí se inicializan todos los datos principales del grafo y se dispara
+        el menú principal al final.
+        """
+        signal.signal(signal.SIGINT, self.handleExitSignal)
+
+        self.Matrix = []
+        self.MatrixRelations = {}
+        self.hasMatrix = False
+        self.isDirected = False
+        self.inputSource = self.getGraphInputSource()
+        self.inputMode = self.getNodeNamingMode()
+
+        if (self.inputSource == "matrix"):
+            self.hasMatrix = True
+            self.isDirected = True
+            self.Matrix = self.getMatrix()
+            self.NodesNames = self.getNodesNames(len(self.Matrix), self.inputMode)
+            self.NodesEdgesArray = self.getNodesEdgesArrayFromMatrix()
+            self.MatrixRelations = self.getMatrixRelations()
+        else:
+            nodesNumber = self.askPositiveInteger(" [*] Ingresa la cantidad de nodos a operar: \n --> ")
+            self.NodesNames = self.getNodesNames(nodesNumber, self.inputMode)
+            self.NodesEdgesArray = self.getNodesEdgesArray()
+
+        self.Edges = self.getEdges()
+        self.MatrixEdges = self.getMatrixEdgesWithLoops() if self.hasMatrix else []
+
+        # haveWeights indica si ya se capturaron pesos para las aristas.
+        # Se usa para saber si se deben dibujar etiquetas de pesos y si se puede ejecutar Kruskal.
+        self.haveWeights = False
+        self.EdgesWeights = []
+        self.KruscalEdgesArray = []
+
+        self.askForWeights()
+        self.NodesColored = self.getColorGraph()
+
+        if (self.haveWeights):
+            self.KruscalEdgesArray = self.getKruscalGraph()
+
+        self.mainMenu()
+
     def handleExitSignal(self, signalNumber, currentFrame):
         """
         Maneja Ctrl+C.
@@ -323,51 +368,6 @@ class GraphClass:
                 self.getNodeOrder(nodeData["Node"]),
             ),
         )
-
-    def __init__(self):
-        """
-        Constructor de la clase.
-
-        Aquí se inicializan todos los datos principales del grafo y se dispara
-        el menú principal al final.
-        """
-        signal.signal(signal.SIGINT, self.handleExitSignal)
-
-        self.Matrix = []
-        self.MatrixRelations = {}
-        self.hasMatrix = False
-        self.isDirected = False
-        self.inputSource = self.getGraphInputSource()
-        self.inputMode = self.getNodeNamingMode()
-
-        if (self.inputSource == "matrix"):
-            self.hasMatrix = True
-            self.isDirected = True
-            self.Matrix = self.getMatrix()
-            self.NodesNames = self.getNodesNames(len(self.Matrix), self.inputMode)
-            self.NodesEdgesArray = self.getNodesEdgesArrayFromMatrix()
-            self.MatrixRelations = self.getMatrixRelations()
-        else:
-            nodesNumber = self.askPositiveInteger(" [*] Ingresa la cantidad de nodos a operar: \n --> ")
-            self.NodesNames = self.getNodesNames(nodesNumber, self.inputMode)
-            self.NodesEdgesArray = self.getNodesEdgesArray()
-
-        self.Edges = self.getEdges()
-        self.MatrixEdges = self.getMatrixEdgesWithLoops() if self.hasMatrix else []
-
-        # haveWeights indica si ya se capturaron pesos para las aristas.
-        # Se usa para saber si se deben dibujar etiquetas de pesos y si se puede ejecutar Kruskal.
-        self.haveWeights = False
-        self.EdgesWeights = []
-        self.KruscalEdgesArray = []
-
-        self.askForWeights()
-        self.NodesColored = self.getColorGraph()
-
-        if (self.haveWeights):
-            self.KruscalEdgesArray = self.getKruscalGraph()
-
-        self.mainMenu()
 
     def askForWeights(self):
         """
