@@ -296,6 +296,24 @@ class GraphClass:
             if nodeName == firstNode
         )
 
+    def getNodeNeighbors(self, nodeName):
+        """
+        Retorna los vecinos reales de un nodo usando self.Edges.
+
+        En entrada manual self.Edges ya elimina aristas repetidas y trata
+        A-B igual que B-A. Usar esta lista evita que la coloración ignore
+        conexiones que fueron capturadas desde el otro extremo.
+        """
+        neighbors = []
+
+        for firstNode, secondNode in self.Edges:
+            if (firstNode == nodeName and secondNode not in neighbors):
+                neighbors.append(secondNode)
+            elif (secondNode == nodeName and firstNode not in neighbors):
+                neighbors.append(firstNode)
+
+        return neighbors
+
     def isMatrixReflexive(self):
         """
         Una relación es reflexiva si toda la diagonal principal contiene 1.
@@ -369,7 +387,7 @@ class GraphClass:
         Retorna los nodos ordenados para la coloración.
 
         Criterio:
-        1. EdgeCount descendente.
+        1. Grado real descendente.
         2. Nombre/orden del nodo ascendente si hay empate.
 
         Esta función solo afecta al grafo de coloración y su tabla.
@@ -378,7 +396,7 @@ class GraphClass:
         return sorted(
             self.NodesEdgesArray,
             key=lambda nodeData: (
-                -nodeData["EdgesCount"],
+                -self.countLogicalEdgesByNode(nodeData["Node"]),
                 self.getNodeOrder(nodeData["Node"]),
             ),
         )
@@ -600,7 +618,11 @@ class GraphClass:
         for nodeData in self.NodesEdgesArray:
             originNode = nodeData["Node"]
             for destinationNode in nodeData["List"]:
-                edge = [originNode, destinationNode]
+                if (not self.isDirected):
+                    edge = sorted([originNode, destinationNode], key=self.getNodeOrder)
+                else:
+                    edge = [originNode, destinationNode]
+
                 reversedEdge = [destinationNode, originNode]
                 if (edge not in edges and reversedEdge not in edges):
                     edges.append(edge)
@@ -629,14 +651,15 @@ class GraphClass:
 
             # excludedNodes contiene los nodos que no pueden usar este color
             # porque son adyacentes a algún nodo ya pintado con ese mismo color.
-            excludedNodes = self.createUpdateExcludedNodes(nodeData["List"])
+            excludedNodes = self.createUpdateExcludedNodes(self.getNodeNeighbors(nodeName))
             nodesColored[nodeName] = nodeColor
 
             for candidateData in orderedNodes:
                 candidateName = candidateData["Node"]
 
                 if (candidateName not in excludedNodes and candidateName not in nodesColored):
-                    excludedNodes = self.createUpdateExcludedNodes(candidateData["List"], excludedNodes)
+                    candidateNeighbors = self.getNodeNeighbors(candidateName)
+                    excludedNodes = self.createUpdateExcludedNodes(candidateNeighbors, excludedNodes)
                     nodesColored[candidateName] = nodeColor
 
         return nodesColored
